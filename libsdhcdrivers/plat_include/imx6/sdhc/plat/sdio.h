@@ -33,5 +33,11 @@ enum sdio_id {
     SDHC3,
     SDHC4,
     NSDHC,
+#ifdef CONFIG_PLAT_IMX6SX
+    SDHC_DEFAULT = SDHC2
+#elif  CONFIG_PLAT_IMX6
     SDHC_DEFAULT = SDHC4
+#else
+#error "unsupported platform"
+#endif
 };
