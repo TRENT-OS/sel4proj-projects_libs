@@ -38,6 +38,7 @@ static inline void udelay(long us)
  */
 static inline void *sdhc_map_device(struct ps_io_mapper *o, uintptr_t paddr, int size)
 {
+    printf("sdhc_map_device()");
     return ps_io_map(o, paddr, size, 0, PS_MEM_NORMAL);
 }
 

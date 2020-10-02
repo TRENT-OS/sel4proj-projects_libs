@@ -740,6 +740,9 @@ static int sdhc_reset(sdio_host_dev_t *sdio)
 
     /* Check if a SD card is inserted. */
     val = readl(host->base + PRES_STATE);
+
+    printf("CARD_PRES_STATE: %d", val & PRES_STATE_CDPL);
+
     if (val & PRES_STATE_CDPL) {
         ZF_LOGD("Card Inserted");
         if (!(val & SDHC_PRES_STATE_WPSPL)) {
@@ -785,6 +788,7 @@ int sdhc_init(void *iobase, const int *irq_table, int nirqs, ps_io_ops_t *io_ops
 {
     sdhc_dev_t sdhc;
     /* Allocate memory for SDHC structure */
+    printf("%s: iobase register set to: %lu\n", __func__, readl(iobase));
     sdhc = (sdhc_dev_t)malloc(sizeof(*sdhc));
     if (!sdhc) {
         ZF_LOGE("Not enough memory!");

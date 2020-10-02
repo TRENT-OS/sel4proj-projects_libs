@@ -49,19 +49,23 @@ int sdio_init(enum sdio_id id, ps_io_ops_t *io_ops, sdio_host_dev_t *dev)
 {
     void *iobase;
     int ret;
+    printf("Received sdio_id: %d\n", id);
     switch (id) {
     case SDHC1:
         iobase = RESOURCE(io_ops, SDHC1);
         break;
     case SDHC2:
+        printf("Got to SDHC2\n");
         iobase = RESOURCE(io_ops, SDHC2);
         break;
     case SDHC3:
         iobase = RESOURCE(io_ops, SDHC3);
         break;
     case SDHC4:
+        printf("Got to SDHC4\n");
         iobase = RESOURCE(io_ops, SDHC4);
     case IMX6_IOMUXC:
+        printf("Got to IMX6_IOMUXC\n");
         iobase = RESOURCE(io_ops, IMX6_IOMUXC);
         ret = mux_init(iobase, io_ops);
         if (ret) {
