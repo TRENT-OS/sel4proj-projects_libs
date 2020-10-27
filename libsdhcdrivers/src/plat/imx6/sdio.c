@@ -32,15 +32,19 @@ int sdio_init(enum sdio_id id, ps_io_ops_t *io_ops, sdio_host_dev_t *dev)
     int ret;
     switch (id) {
     case SDHC1:
+        printf("Setting up SDHC1\n");
         iobase = RESOURCE(io_ops, SDHC1);
         break;
     case SDHC2:
+        printf("Setting up SDHC2\n");
         iobase = RESOURCE(io_ops, SDHC2);
         break;
     case SDHC3:
+        printf("Setting up SDHC3\n");
         iobase = RESOURCE(io_ops, SDHC3);
         break;
     case SDHC4:
+        printf("Setting up SDHC4\n");
         iobase = RESOURCE(io_ops, SDHC4);
         break;
     default:

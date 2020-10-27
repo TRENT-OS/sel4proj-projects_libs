@@ -570,6 +570,7 @@ static int sdhc_send_cmd(sdio_host_dev_t *sdio, struct mmc_cmd *cmd, sdio_cb cb,
         while (!cmd->complete) {
             sdhc_handle_irq(sdio, 0);
         }
+        printf("CMD complete\n");
         /* Return result */
         if (cmd->complete < 0) {
             return cmd->complete;
@@ -713,12 +714,14 @@ static int sdhc_reset(sdio_host_dev_t *sdio)
     val |= SYS_CTRL_INITA;
     writel(val, host->base + SYS_CTRL);
     while (readl(host->base + SYS_CTRL) & SYS_CTRL_INITA);
+    printf("SYS_CTRL set to: %lu\n", val);
 
     /* Check if a SD card is inserted. */
     val = readl(host->base + PRES_STATE);
-    if (val & SDHC_PRES_STATE_CINST) {
+    ZF_LOGD("PRES_STATE: %lu\n", val);
+    if (val & PRES_STATE_CINST) {
         ZF_LOGD("Card Inserted");
-        if (!(val & SDHC_PRES_STATE_WPSPL)) {
+        if (!(val & PRES_STATE_WPSPL)) {
             ZF_LOGD("(Read Only)");
         }
     } else {
