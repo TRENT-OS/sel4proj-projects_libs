@@ -18,14 +18,14 @@
 #define SDHC3_PADDR 0x02198000
 #define SDHC4_PADDR 0x0219C000
 
-#define IMX6_IOMUXC_PADDR 0x020E0000
+// #define IMX6_IOMUXC_PADDR 0x020E0000
 
 #define SDHC1_SIZE  0x1000
 #define SDHC2_SIZE  0x1000
 #define SDHC3_SIZE  0x1000
 #define SDHC4_SIZE  0x1000
 
-#define IMX6_IOMUXC_SIZE  0x1000
+// #define IMX6_IOMUXC_SIZE  0x1000
 
 #define SDHC1_IRQ   54
 #define SDHC2_IRQ   55
@@ -64,15 +64,7 @@ int sdio_init(enum sdio_id id, ps_io_ops_t *io_ops, sdio_host_dev_t *dev)
     case SDHC4:
         printf("Got to SDHC4\n");
         iobase = RESOURCE(io_ops, SDHC4);
-    case IMX6_IOMUXC:
-        printf("Got to IMX6_IOMUXC\n");
-        iobase = RESOURCE(io_ops, IMX6_IOMUXC);
-        ret = mux_init(iobase, io_ops);
-        if (ret) {
-            ZF_LOGE("Failed to initialise Muxer");
-            return -1;
-        }
-        return 0;
+        break;
     default:
         return -1;
     }
