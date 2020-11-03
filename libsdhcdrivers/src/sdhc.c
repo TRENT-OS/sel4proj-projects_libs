@@ -19,6 +19,9 @@
 #include "services.h"
 #include "mmc.h"
 
+#include <platsupport/mux.h>
+#include <platsupport/plat/mux.h>
+
 #define DS_ADDR               0x00 //DMA System Address
 #define BLK_ATT               0x04 //Block Attributes
 #define CMD_ARG               0x08 //Command Argument
@@ -48,6 +51,27 @@
 #define MMC_BOOT              0xC4 //MMC Boot Register
 #define VEND_SPEC2            0xC8 //Vendor Specific 2 Register
 #define HOST_VERSION          0xFC //Host Version (0xFE adjusted for alignment)
+
+
+#define sw_mux_ctl_pad_sd3_data0      0x2C0
+#define sw_mux_ctl_pad_sd3_data1      0x2C4
+#define sw_mux_ctl_pad_sd3_data2      0x2C8
+#define sw_mux_ctl_pad_sd3_data3      0x2CC
+
+#define sw_pad_ctl_pad_sd3_cmd       0x6A0
+#define sw_pad_ctl_pad_sd3_clk       0x6A4
+#define sw_pad_ctl_pad_sd3_data0     0x6A8
+#define sw_pad_ctl_pad_sd3_data1     0x6AC
+#define sw_pad_ctl_pad_sd3_data2     0x6B0
+#define sw_pad_ctl_pad_sd3_data3     0x6B4
+
+
+#define sw_pad_ctl_pad_sd4_cmd      0x6DC
+#define sw_pad_ctl_pad_sd4_clk      0x6E0
+#define sw_pad_ctl_pad_sd4_data0    0x704
+#define sw_pad_ctl_pad_sd4_data1    0x708
+#define sw_pad_ctl_pad_sd4_data2    0x70C
+#define sw_pad_ctl_pad_sd4_data3    0x710
 
 
 /* Block Attributes Register */
@@ -716,7 +740,7 @@ static int sdhc_reset(sdio_host_dev_t *sdio)
 
     /* Check if a SD card is inserted. */
     val = readl(host->base + PRES_STATE);
-    if (val & SDHC_PRES_STATE_CINST) {
+    if (val & PRES_STATE_CDPL) {
         ZF_LOGD("Card Inserted");
         if (!(val & SDHC_PRES_STATE_WPSPL)) {
             ZF_LOGD("(Read Only)");
@@ -792,3 +816,67 @@ int sdhc_init(void *iobase, const int *irq_table, int nirqs, ps_io_ops_t *io_ops
 }
 
 
+int
+mux_init(void* iobase, ps_io_ops_t* io_ops)
+{
+    if(iobase == NULL)
+    {
+        printf("Failed to map iobase\n");
+        return -1;
+    }
+
+    uint32_t val = readl(iobase);
+    printf("%s: iobase set to: %lu\n", __func__, val);
+
+    // Set uSDHC3
+    // writel(0x17059, iobase + sw_pad_ctl_pad_sd3_cmd);
+    // val = readl(iobase + sw_pad_ctl_pad_sd3_cmd);
+    // printf("sw_pad_ctl_pad_sd3_cmd reset to: %lu\n", val);
+
+    // writel(0x10059, iobase + sw_pad_ctl_pad_sd3_clk);
+    // val = readl(iobase + sw_pad_ctl_pad_sd3_clk);
+    // printf("sw_pad_ctl_pad_sd3_clk reset to: %lu\n", val);
+
+    // writel(0x17059, iobase + sw_pad_ctl_pad_sd3_data0);
+    // val = readl(iobase + sw_pad_ctl_pad_sd3_data0);
+    // printf("sw_pad_ctl_pad_sd3_data0 reset to: %lu\n", val);
+
+    // writel(0x17059, iobase + sw_pad_ctl_pad_sd3_data1);
+    // val = readl(iobase + sw_pad_ctl_pad_sd3_data1);
+    // printf("sw_pad_ctl_pad_sd3_data1 reset to: %lu\n", val);
+
+    // writel(0x17059, iobase + sw_pad_ctl_pad_sd3_data2);
+    // val = readl(iobase + sw_pad_ctl_pad_sd3_data2);
+    // printf("sw_pad_ctl_pad_sd3_data2 reset to: %lu\n", val);
+
+    // writel(0x17059, iobase + sw_pad_ctl_pad_sd3_data3);
+    // val = readl(iobase + sw_pad_ctl_pad_sd3_data3);
+    // printf("sw_pad_ctl_pad_sd3_data3 reset to: %lu\n", val);
+
+    // Set uSDHC4
+    // writel(0x17059, iobase + sw_pad_ctl_pad_sd4_cmd);
+    // val = readl(iobase + sw_pad_ctl_pad_sd4_cmd);
+    // printf("sw_pad_ctl_pad_sd4_cmd reset to: %lu\n", val);
+
+    // writel(0x10059, iobase + sw_pad_ctl_pad_sd4_clk);
+    // val = readl(iobase + sw_pad_ctl_pad_sd4_clk);
+    // printf("sw_pad_ctl_pad_sd4_clk reset to: %lu\n", val);
+
+    // writel(0x17059, iobase + sw_pad_ctl_pad_sd4_data0);
+    // val = readl(iobase + sw_pad_ctl_pad_sd4_data0);
+    // printf("sw_pad_ctl_pad_sd4_data0 reset to: %lu\n", val);
+
+    // writel(0x17059, iobase + sw_pad_ctl_pad_sd4_data1);
+    // val = readl(iobase + sw_pad_ctl_pad_sd4_data1);
+    // printf("sw_pad_ctl_pad_sd4_data1 reset to: %lu\n", val);
+
+    // writel(0x17059, iobase + sw_pad_ctl_pad_sd4_data2);
+    // val = readl(iobase + sw_pad_ctl_pad_sd4_data2);
+    // printf("sw_pad_ctl_pad_sd4_data2 reset to: %lu\n", val);
+
+    // writel(0x17059, iobase + sw_pad_ctl_pad_sd4_data3);
+    // val = readl(iobase + sw_pad_ctl_pad_sd4_data3);
+    // printf("sw_pad_ctl_pad_sd4_data3 reset to: %lu\n", val);
+
+    return 0;
+}
