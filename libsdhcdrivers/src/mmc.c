@@ -298,6 +298,7 @@ static int mmc_voltage_validation(mmc_card_t card)
     }
     card->ocr = cmd.response[0];
 
+#ifndef RASPPI
     /* TODO: Check uSDHC compatibility */
     voltage = MMC_VDD_29_30 | MMC_VDD_30_31;
     if (host_is_voltage_compatible(card, 3300) && (card->ocr & voltage)) {
@@ -306,6 +307,21 @@ static int mmc_voltage_validation(mmc_card_t card)
         voltage |= (1 << 25);
         voltage |= (1 << 24);
     }
+#else
+    voltage = 0;
+    // voltage = 0x00ff8000;
+    voltage |= (1 << 30);
+    // voltage |= (1 << 28);
+    // voltage |= (1 << 25);
+    // voltage |= (1 << 24);
+    voltage |= MMC_VDD_33_34;
+    voltage |= MMC_VDD_32_33;
+    voltage |= MMC_VDD_31_32;
+    voltage |= MMC_VDD_30_31;
+    voltage |= MMC_VDD_29_30;
+    // voltage |= (1 << 18);
+    // voltage |= (1 << 17);
+#endif
 
     /* Wait until the voltage level is set. */
     do {

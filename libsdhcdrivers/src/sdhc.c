@@ -13,6 +13,11 @@
 #include "services.h"
 #include "mmc.h"
 
+#ifdef RASPPI
+#include <sdhc/plat/mailbox.h>
+#include <sdhc/plat/environment.h>
+#endif
+
 #define DS_ADDR               0x00 //DMA System Address
 #define BLK_ATT               0x04 //Block Attributes
 #define CMD_ARG               0x08 //Command Argument
@@ -184,12 +189,18 @@ static inline sdhc_dev_t sdio_get_sdhc(sdio_host_dev_t *sdio)
     return (sdhc_dev_t)sdio->priv;
 }
 
+static inline mailbox_dev_t sdio_get_mailbox(sdio_host_dev_t *sdio)
+{
+    return (mailbox_dev_t)sdio->mbox;
+}
+
 /** Print uSDHC registers. */
 UNUSED static void print_sdhc_regs(struct sdhc *host)
 {
     int i;
     for (i = DS_ADDR; i <= HOST_VERSION; i += 0x4) {
-        ZF_LOGD("%x: %X", i, readl(host->base + i));
+        ZF_LOGE("%x: %X", i, readl(host->base + i));
+        // ZF_LOGD("%x: %X", i, readl(host->base + i));
     }
 }
 
@@ -243,7 +254,7 @@ static int sdhc_next_cmd(sdhc_dev_t host)
 
     /* Two commands need to have at least 8 clock cycles in between.
      * Lets assume that the hcd will enforce this. */
-    //udelay(1000);
+    udelay(1000);
 
     /* Write to the argument register. */
     ZF_LOGD("CMD: %d with arg %x ", cmd->index, cmd->arg);
@@ -297,7 +308,7 @@ static int sdhc_next_cmd(sdhc_dev_t host)
     val = (cmd->index & CMD_XFR_TYP_CMDINX_MASK) << CMD_XFR_TYP_CMDINX_SHF;
     val &= ~(CMD_XFR_TYP_CMDTYP_MASK << CMD_XFR_TYP_CMDTYP_SHF);
     if (cmd->data) {
-        if (host->version == 2) {
+        if (host->version >= 2) {
             /* Some controllers implement MIX_CTRL as part of the XFR_TYP */
             val |= mix_ctrl;
         } else {
@@ -393,6 +404,7 @@ static int sdhc_handle_irq(sdio_host_dev_t *sdio, int irq UNUSED)
     }
     if (int_status & INT_STATUS_DCE) {
         ZF_LOGE("Data CRC error");
+        ZF_LOGE("Status register: %08x",int_status);
         cmd->complete = -1;
     }
     if (int_status & INT_STATUS_DTOE) {
@@ -558,6 +570,7 @@ static int sdhc_send_cmd(sdio_host_dev_t *sdio, struct mmc_cmd *cmd, sdio_cb cb,
         }
     }
 
+
     /* finalise the transacton */
     if (cb == NULL) {
         /* Wait for completion */
@@ -628,34 +641,118 @@ static int sdhc_set_clock_div(
     return 0;
 }
 
-static int sdhc_set_clock(volatile void *base_addr, clock_mode clk_mode)
+#ifdef RASPPI
+// Switch the clock rate whilst running
+int SwitchClockRate (volatile void *base_addr, uint32_t base_clock, uint32_t target_rate)
+{
+	// Decide on an appropriate divider
+	uint32_t divider = GetClockDivider (base_clock, target_rate);
+
+	// Wait for the command inhibit (CMD and DAT) bits to clear
+	while (readl(base_addr + PRES_STATE) & 3)
+	{
+        udelay(1000);
+	}
+
+	// Set the SD clock off
+	uint32_t control1 = readl(base_addr + SYS_CTRL);
+	control1 &= ~(1 << 2);
+    writel(control1,base_addr + SYS_CTRL);
+	udelay (2000);
+
+	// Write the new divider
+	control1 &= ~0xffe0;		// Clear old setting + clock generator select
+	control1 |= divider;
+    writel(control1,base_addr + SYS_CTRL);
+	udelay (2000);
+
+	// Enable the SD clock
+	control1 |= (1 << 2);
+    writel(control1,base_addr + SYS_CTRL);
+	udelay (2000);
+
+	return 0;
+}
+#endif
+
+// static int sdhc_set_clock(volatile void *base_addr, clock_mode clk_mode)
+static int sdhc_set_clock(sdio_host_dev_t *sdio, volatile void *base_addr, clock_mode clk_mode)
 {
     int rslt = -1;
 
-    const bool isClkEnabled = readl(base_addr + SYS_CTRL) & SYS_CTRL_CLK_INT_EN;
-    if (!isClkEnabled) {
-        sdhc_enable_clock(base_addr);
-    }
+    #ifdef RASPPI
+        // Get the base clock rate
+        uint32_t base_clock = GetBaseClock (sdio_get_mailbox(sdio));
+        uint32_t control1,f_id;
+        uint32_t rate;
+        uint32_t msg[3] = {0,0,0};
 
-    /* TODO: Relate the clock rate settings to the actual capabilities of the
-     * card and the host controller. The conservative settings chosen should
-     * work with most setups, but this is not an ideal solution. According to
-     * the RM, the default freq. of the base clock should be at around 200MHz.
-     */
-    switch (clk_mode) {
-    case CLOCK_INITIAL:
-        /* Divide the base clock by 512 */
-        rslt = sdhc_set_clock_div(base_addr, DIV_16, PRESCALER_32, SDCLK_TIMES_2_POW_14);
-        break;
-    case CLOCK_OPERATIONAL:
-        /* Divide the base clock by 8 */
-        rslt = sdhc_set_clock_div(base_addr, DIV_4, PRESCALER_2, SDCLK_TIMES_2_POW_29);
-        break;
-    default:
-        ZF_LOGE("Unsupported clock mode setting");
-        rslt = -1;
-        break;
-    }
+        switch (clk_mode) {
+        case CLOCK_INITIAL:
+            control1 = readl(base_addr + SYS_CTRL);
+            control1 |= 1;			// enable clock
+            // Set to identification frequency (400 kHz)
+            f_id = GetClockDivider (base_clock, SD_CLOCK_ID);
+            if (f_id == 0xffffffff)
+            {
+                ZF_LOGE("Unable to get a valid clock divider for ID frequency");
+                rslt = -1;
+                break;
+            }
+            control1 |= f_id;
+
+            // was not masked out and or'd with (7 << 16) in original driver
+            control1 &= ~(0xF << 16);
+            control1 |= (11 << 16);		// data timeout = TMCLK * 2^24
+
+            writel(control1,base_addr + SYS_CTRL);
+            udelay(2000);
+            control1 = readl(base_addr + SYS_CTRL);
+            control1 |= 4;
+            writel(control1,base_addr + SYS_CTRL);
+            udelay(2000);
+
+            // SwitchClockRate(base_addr, base_clock, SD_CLOCK_ID);
+            // udelay (5000);
+            rslt = 0;
+            break;
+        case CLOCK_OPERATIONAL:
+            SwitchClockRate (base_addr, base_clock, SD_CLOCK_NORMAL);
+            // A small wait before the voltage switch
+            udelay (5000);
+            rslt = 0;
+            break;
+        default:
+            ZF_LOGE("Unsupported clock mode setting");
+            rslt = -1;
+            break;
+        }
+    #else
+        const bool isClkEnabled = readl(base_addr + SYS_CTRL) & SYS_CTRL_CLK_INT_EN;
+        if (!isClkEnabled) {
+            sdhc_enable_clock(base_addr);
+        }
+
+        /* TODO: Relate the clock rate settings to the actual capabilities of the
+        * card and the host controller. The conservative settings chosen should
+        * work with most setups, but this is not an ideal solution. According to
+        * the RM, the default freq. of the base clock should be at around 200MHz.
+        */
+        switch (clk_mode) {
+        case CLOCK_INITIAL:
+            /* Divide the base clock by 512 */
+            rslt = sdhc_set_clock_div(base_addr, DIV_16, PRESCALER_32, SDCLK_TIMES_2_POW_14);
+            break;
+        case CLOCK_OPERATIONAL:
+            /* Divide the base clock by 8 */
+            rslt = sdhc_set_clock_div(base_addr, DIV_4, PRESCALER_2, SDCLK_TIMES_2_POW_29);
+            break;
+        default:
+            ZF_LOGE("Unsupported clock mode setting");
+            rslt = -1;
+            break;
+        }
+    #endif
 
     if (rslt < 0) {
         ZF_LOGE("Failed to change the clock settings");
@@ -667,6 +764,32 @@ static int sdhc_set_clock(volatile void *base_addr, clock_mode clk_mode)
 /** Software Reset */
 static int sdhc_reset(sdio_host_dev_t *sdio)
 {
+#ifdef RASPPI
+    if(!SetPowerStateOn (sdio_get_mailbox(sdio),DEVICE_ID_SD_CARD))
+	{
+		ZF_LOGE("BCM2708 controller did not power on successfully");
+		return -1;
+	}
+    uint32_t state = GetClockState(sdio_get_mailbox(sdio),CLOCK_ID_EMMC);
+#define EMMC_STATE_ON (1 << 0)
+#define CLK_NOT_EXISTS (1 << 1)
+    if(state & CLK_NOT_EXISTS)
+    {
+		ZF_LOGE("Clock does not exist");
+		return -1;
+    }
+    if(!(state & EMMC_STATE_ON))
+    {
+        if(!SetClockState(sdio_get_mailbox(sdio),CLOCK_ID_EMMC,1))
+        {
+            ZF_LOGE("Setting emmc clock state over mailbox fails.");
+            return -1;
+        }
+    }
+
+    // ZF_LOGE("min emmc clock rate: %d",GetMinClockRate(sdio_get_mailbox(sdio),CLOCK_ID_EMMC));
+    // ZF_LOGE("max emmc clock rate: %d",GetMaxClockRate(sdio_get_mailbox(sdio),CLOCK_ID_EMMC));
+#endif
     sdhc_dev_t host = sdio_get_sdhc(sdio);
     uint32_t val;
 
@@ -689,7 +812,8 @@ static int sdhc_reset(sdio_host_dev_t *sdio)
     writel(val, host->base + INT_SIGNAL_EN);
 
     /* Configure clock for initialization */
-    sdhc_set_clock(host->base, CLOCK_INITIAL);
+    sdhc_set_clock(sdio, host->base, CLOCK_INITIAL);
+    // sdhc_set_clock(host->base, CLOCK_INITIAL);
 
     /* TODO: Select Voltage Level */
 
@@ -747,7 +871,28 @@ static int sdhc_set_operational(struct sdio_host_dev *sdio)
      * operational clock settings are chosen rather conservative.
      */
     sdhc_dev_t host = sdio_get_sdhc(sdio);
-    return sdhc_set_clock(host->base, CLOCK_OPERATIONAL);
+    return sdhc_set_clock(sdio, host->base, CLOCK_OPERATIONAL);
+}
+
+int mbox_init(
+    void *iobase,
+    ps_io_ops_t *io_ops,
+    sdio_host_dev_t *dev
+)
+{
+    mailbox_dev_t mailbox;
+    /* Allocate memory for mailbox structure */
+    mailbox = (mailbox_dev_t)malloc(sizeof(*mailbox));
+    if (!mailbox) {
+        ZF_LOGE("Not enough memory!");
+        return -1;
+    }
+    /* Complete the initialisation of the mailbox structure */
+    mailbox->base = iobase;
+    mailbox->dalloc = &io_ops->dma_manager;
+    /* Initialise SDIO structure */
+    dev->mbox = mailbox;
+    return 0;
 }
 
 int sdhc_init(void *iobase, const int *irq_table, int nirqs, ps_io_ops_t *io_ops,

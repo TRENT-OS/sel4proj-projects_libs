@@ -24,5 +24,9 @@ struct sdhc {
 };
 typedef struct sdhc *sdhc_dev_t;
 
+int mbox_init(void *iobase,ps_io_ops_t *io_ops,sdio_host_dev_t *dev);
+
 int sdhc_init(void *iobase, const int *irq_table, int nirqs, ps_io_ops_t *io_ops,
               sdio_host_dev_t *dev);
+
+int ResetDat (sdio_host_dev_t *sdio);

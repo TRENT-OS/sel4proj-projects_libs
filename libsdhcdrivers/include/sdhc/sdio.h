@@ -41,6 +41,7 @@ struct sdio_host_dev {
     uint32_t (*get_present_state)(struct sdio_host_dev *sdio);
 
     void *priv;
+    void *mbox;
 };
 typedef struct sdio_host_dev sdio_host_dev_t;
 

@@ -14,4 +14,4 @@ list(SORT deps)
 
 add_library(sdhcdrivers STATIC EXCLUDE_FROM_ALL ${deps})
 target_include_directories(sdhcdrivers PUBLIC include plat_include/${KernelPlatform})
-target_link_libraries(sdhcdrivers muslc utils platsupport)
+target_link_libraries(sdhcdrivers muslc utils platsupport sel4camkes)
