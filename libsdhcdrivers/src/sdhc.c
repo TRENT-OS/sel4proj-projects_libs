@@ -816,6 +816,13 @@ static int sdhc_reset(sdio_host_dev_t *sdio)
     // sdhc_set_clock(host->base, CLOCK_INITIAL);
 
     /* TODO: Select Voltage Level */
+#if RASPPI >= 4
+	// Enable SD Bus Power VDD1 at 3.3V
+	val = readl(host->base + PROT_CTRL);
+	val |= 0x0F << 8;
+    writel(val,host->base + PROT_CTRL);
+    udelay(2000);
+#endif
 
     /* Set bus width */
     val = readl(host->base + PROT_CTRL);
