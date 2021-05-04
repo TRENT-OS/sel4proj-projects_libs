@@ -1,5 +1,6 @@
 /*
  * Copyright 2017, Data61, CSIRO (ABN 41 687 119 230)
+ * Copyright (C) 2021, HENSOLDT Cyber GmbH
  *
  * SPDX-License-Identifier: BSD-2-Clause
  */
@@ -88,3 +89,5 @@ int mmc_handle_irq(mmc_card_t mmc, int irq);
  * @return              Card capacity in bytes, negative on failure.
  */
 long long mmc_card_capacity(mmc_card_t mmc_card);
+
+uint32_t mmc_get_voltage(mmc_card_t card UNUSED);

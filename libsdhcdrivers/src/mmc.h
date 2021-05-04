@@ -1,5 +1,6 @@
 /*
  * Copyright 2017, Data61, CSIRO (ABN 41 687 119 230)
+ * Copyright (C) 2021, HENSOLDT Cyber GmbH
  *
  * SPDX-License-Identifier: BSD-2-Clause
  */
@@ -198,9 +199,3 @@ static inline int host_set_operational(struct mmc_card *card)
 {
     return sdio_set_operational(card->sdio);
 }
-
-
-
-
-
-/* void card_data(...) */
