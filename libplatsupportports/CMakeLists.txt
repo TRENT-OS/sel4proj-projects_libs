@@ -15,6 +15,6 @@ add_library(platsupportports EXCLUDE_FROM_ALL ${deps})
 target_include_directories(platsupportports PUBLIC include plat_include/${KernelPlatform})
 target_link_libraries(platsupportports muslc platsupport)
 
-if("${KernelPlatform}" STREQUAL "tx2")
+if(("${KernelPlatform}" STREQUAL "tx2") OR ("${KernelPlatform}" STREQUAL "xavier"))
     target_link_libraries(platsupportports tx2bpmp)
 endif()

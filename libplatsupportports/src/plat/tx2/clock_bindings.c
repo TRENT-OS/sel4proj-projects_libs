@@ -11,6 +11,13 @@
 
 /* This maps the clk_ids and clock_gates to the tx2 BPMP clock IDs */
 
+uint32_t clk_id_clk_gate_map[] = {
+    [CLK_UARTA] = CLK_GATE_UARTA,
+    [CLK_UARTB] = CLK_GATE_UARTB,
+    [CLK_UARTC] = CLK_GATE_UARTC,
+    [CLK_UARTD] = CLK_GATE_UARTD,
+};
+
 uint32_t mrq_clk_id_map[] = {
     [CLK_PLLC_OUT_ISP] = TEGRA186_CLK_PLLC_OUT_ISP,
     [CLK_PLLC_OUT_VE] = TEGRA186_CLK_PLLC_OUT_VE,
